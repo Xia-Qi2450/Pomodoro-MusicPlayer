@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Pomodoro + Music Player</title>
+<style>
+  :root{
+    --bg:#f0f2f5; --card:#fff; --accent:#4CAF50; --accent-2:#2196F3; --danger:#f44336;
+    --muted:#888;
+  }
+  html,body{height:100%; margin:0; font-family: "Segoe UI", Roboto, Arial, sans-serif; background:var(--bg); color:#222}
+  .wrap{display:flex; flex-direction:column; align-items:center; padding:18px 12px 60px;}
+  h1{margin:6px 0 18px; font-size:22px; letter-spacing:0.3px}
+  /* Notification bar */
+  #notif-bar{
+    position:fixed; left:12px; right:12px; top:-72px;
+    background:var(--accent); color:#fff; padding:12px 16px; border-radius:10px;
+    box-shadow:0 6px 20px rgba(0,0,0,.12); font-weight:600; text-align:center; z-index:9999;
+    transition:top .45s ease, opacity .45s ease;
+  }
+  #notif-bar.show{ top:12px; }
+
+  /* Card */
+  .card{width:100%; max-width:760px; background:var(--card); border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.09);
+        padding:18px; margin:12px 0;}
+  #timer{font-size:56px; color:var(--accent); margin:0 0 6px 0; font-weight:600}
+  .progress-container, .total-progress-container{width:100%; height:14px; background:#eee; border-radius:999px; overflow:hidden; margin:12px 0}
+  .progress-bar{height:100%; width:0%; background:linear-gradient(90deg,var(--accent),#81C784); transition:width .25s linear}
+  .total-bar{background:linear-gradient(90deg,var(--accent-2),#64B5F6)}
+  .controls{margin:6px 0}
+  .controls button{background:var(--accent); color:#fff; border:none; padding:10px 14px; border-radius:8px; margin-right:8px; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,.06)}
+  .controls button:hover{transform:translateY(-2px)}
+  .small{padding:8px 10px; font-size:14px}
+
+  /* Cycle Visualizer */
+  #cycle-bar{display:flex; gap:8px; margin:12px 0; height:14px}
+  .cycle-segment{flex:1; background:#ddd; border-radius:8px; transition:background .25s, opacity .35s}
+  .cycle-segment.completed{background:var(--accent)}
+  @keyframes flashSegment {0%{box-shadow:0 0 6px rgba(76,175,80,.1)}50%{box-shadow:0 0 18px rgba(76,175,80,.34)}100%{box-shadow:0 0 6px rgba(76,175,80,.1)}}
+  .cycle-segment.active{ animation:flashSegment 1.2s infinite; }
+
+  #long-break-text{display:none; margin:10px 0; color:var(--danger); font-weight:600; text-align:center}
+
+  /* Study container + stats panel */
+  #study-container{transition:all .7s ease}
+  #study-container.hidden{opacity:0; transform:translateY(-20px); pointer-events:none}
+  #stats-panel{display:none; opacity:0; transform:translateY(20px); transition:all .7s ease; background:var(--card); padding:16px; border-radius:10px; box-shadow:0 8px 18px rgba(0,0,0,.06); max-width:760px; width:100%}
+  #stats-panel.visible{display:block; opacity:1; transform:translateY(0)}
+  #stats-panel h3{margin:0 0 8px}
+  #stats-panel p{margin:6px 0; color:#333; font-weight:600}
+
+  /* Music card */
+  .music-card{max-width:760px; width:100%; padding:16px; border-radius:14px; background:var(--card); box-shadow:0 10px 30px rgba(0,0,0,.08); margin:18px 0}
+  .music-controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+  .music-controls button{background:var(--accent-2); color:#fff; border:none; padding:8px 12px; border-radius:8px; cursor:pointer}
+  .music-controls label{display:inline-flex; align-items:center; gap:6px; color:#444; margin-left:8px}
+  .volume-control{display:inline-flex; align-items:center; gap:8px; color:#444; margin-left:8px}
+  .volume-control input[type="range"]{width:140px}
+  #volumeValue{min-width:44px; color:var(--muted); font-size:13px}
+  #song-time{display:flex; justify-content:space-between; font-size:13px; color:var(--muted); margin-top:10px}
+  #song-progress-container{height:8px; background:#eee; border-radius:6px; overflow:hidden; margin-top:8px; cursor:pointer}
+  #song-progress{height:100%; width:0%; background:linear-gradient(90deg,var(--accent-2),#64B5F6); transition:width .15s linear}
+  #playlist{list-style:none; padding:0; margin:12px 0 0; max-height:240px; overflow:auto}
+  #playlist li{padding:8px 6px; border-bottom:1px solid #f0f0f0; cursor:pointer}
+  #playlist li.playing{color:var(--accent-2); font-weight:700}
+
+  /* small responsiveness */
+  @media (max-width:520px){
+    #timer{font-size:44px}
+    .controls button{padding:8px 10px}
+    .music-controls button{padding:8px 10px}
+  }
+</style>
+</head>
+<body>
+  <div id="notif-bar"></div>
+
+  <div class="wrap">
+    <h1>Pomodoro Focus + Music Player 🎧</h1>
+
+    <div class="card">
+      <div id="timer">25:00</div>
+
+      <div class="progress-container"><div id="timerProgress" class="progress-bar"></div></div>
+
+      <div class="controls">
+        <button class="small" id="startBtn">Start</button>
+        <button class="small" id="resetBtn">Reset</button>
+      </div>
+
+      <div id="cycle-bar">
+        <div class="cycle-segment"></div>
+        <div class="cycle-segment"></div>
+        <div class="cycle-segment"></div>
+        <div class="cycle-segment"></div>
+      </div>
+
+      <div id="long-break-text">20-Minute Break!</div>
+
+      <div id="study-container">
+        <h3 style="margin:10px 0 0">Total Study Progress</h3>
+        <div class="total-progress-container"><div id="totalProgress" class="progress-bar total-bar"></div></div>
+        <div id="totalTimeLabel" style="margin-top:8px; color:#222">0 minutes studied today</div>
+      </div>
+    </div>
+
+    <div id="stats-panel">
+      <h3>Daily Stats</h3>
+      <p id="stat-total-study">Total Study Time: 0 min</p>
+      <p id="stat-breaks">Breaks Taken: 0</p>
+      <p id="stat-ratio">Study:Break Ratio: 0 : 0</p>
+      <p id="stat-music">Total Music Played: 0 min</p>
+      <p id="stat-songs">Songs Completed: 0</p>
+    </div>
+
+    <div class="music-card">
+      <h2 style="margin:0 0 8px">Music Player</h2>
+      <div class="music-controls">
+        <button id="prevBtn">⏮</button>
+        <button id="playBtn">⏯</button>
+        <button id="nextBtn">⏭</button>
+        <button id="back10">⏪ 10s</button>
+        <button id="fwd10">10s ⏩</button>
+        <label style="margin-left:auto"><input type="checkbox" id="shuffle"> Shuffle</label>
+        <label><input type="checkbox" id="repeat"> Repeat</label>
+        <label class="volume-control">
+          Volume
+          <input type="range" id="volumeSlider" min="0" max="100" value="100" aria-label="Music volume">
+          <span id="volumeValue">100%</span>
+        </label>
+      </div>
+
+      <div id="song-time">
+        <span id="current-time">0:00</span>
+        <span id="total-time">0:00</span>
+      </div>
+
+      <div id="song-progress-container"><div id="song-progress"></div></div>
+
+      <ul id="playlist"></ul>
+
+      <audio id="audioPlayer" preload="metadata"></audio>
+    </div>
+  </div>
+
+<script>
+/* ===========================
+   Configuration & Variables
+   =========================== */
+const WORK_MIN = 25;
+const SHORT_MIN = 5;
+const LONG_MIN = 20; // requested 20-minute long break
+
+let workDuration = WORK_MIN * 60;
+let shortBreak = SHORT_MIN * 60;
+let longBreak = LONG_MIN * 60;
+
+let remaining = workDuration;
+let interval = null;
+let cycleCount = 0;      // number of completed work sessions
+let isWorking = true;
+let totalStudied = 0;    // minutes (fractional increment)
+let breakCount = 0;
+
+let studyGoalUnlocked = false;
+
+let playlist = [];
+let currentIndex = 0;
+const audio = document.getElementById('audioPlayer');
+let totalMusicSeconds = 0;
+let songsPlayed = 0;
+
+/* iOS audio unlock: wait for user interaction */
+let audioUnlocked = false;
+
+/* DOM refs */
+const startBtn = document.getElementById('startBtn');
+const resetBtn = document.getElementById('resetBtn');
+const prevBtn = document.getElementById('prevBtn');
+const playBtn = document.getElementById('playBtn');
+const nextBtn = document.getElementById('nextBtn');
+const back10 = document.getElementById('back10');
+const fwd10 = document.getElementById('fwd10');
+const shuffleChk = document.getElementById('shuffle');
+const repeatChk = document.getElementById('repeat');
+const volumeSlider = document.getElementById('volumeSlider');
+const volumeValue = document.getElementById('volumeValue');
+
+const timerEl = document.getElementById('timer');
+const timerProgress = document.getElementById('timerProgress');
+const totalProgress = document.getElementById('totalProgress');
+const totalTimeLabel = document.getElementById('totalTimeLabel');
+
+const cycleSegments = document.querySelectorAll('.cycle-segment');
+const longBreakText = document.getElementById('long-break-text');
+
+const notifBar = document.getElementById('notif-bar');
+
+const playlistEl = document.getElementById('playlist');
+const songProgress = document.getElementById('song-progress');
+const songProgressContainer = document.getElementById('song-progress-container');
+const currentTimeEl = document.getElementById('current-time');
+const totalTimeEl = document.getElementById('total-time');
+
+const studyContainer = document.getElementById('study-container');
+const statsPanel = document.getElementById('stats-panel');
+const statTotalStudy = document.getElementById('stat-total-study');
+const statBreaks = document.getElementById('stat-breaks');
+const statRatio = document.getElementById('stat-ratio');
+const statMusic = document.getElementById('stat-music');
+const statSongs = document.getElementById('stat-songs');
+
+let MusicFolder = 'Music/Playlist/'; // relative path to local music folder
+
+audio.volume = 1;
+
+/* ===========================
+   Notification helper
+   =========================== */
+function notify(msg, color='#4CAF50'){
+  notifBar.textContent = msg;
+  notifBar.style.background = color;
+  notifBar.classList.add('show');
+  setTimeout(()=> notifBar.classList.remove('show'), 3200);
+  setTimeout(()=> notifBar.textContent = '', 3500);
+}
+
+/* ===========================
+   Timer / Pomodoro logic
+   =========================== */
+function formatMMSS(sec){
+  if(!sec || isNaN(sec)) return '0:00';
+  sec = Math.max(0, Math.floor(sec));
+  const m = Math.floor(sec/60);
+  const s = sec % 60;
+  return `${m}:${s<10?'0'+s:s}`;
+}
+
+function updateTimerText(){
+  timerEl.textContent = formatMMSS(remaining);
+  updateTitle();
+}
+
+function isLongBreak(){ return !isWorking && cycleCount % 4 === 0 && cycleCount !== 0; }
+
+function updateCycleVisualizer(){
+  cycleSegments.forEach((seg,i)=>{
+    seg.classList.remove('completed','active');
+    if(i < (cycleCount % 4) && isWorking) seg.classList.add('completed');
+    if(i === (cycleCount % 4) && isWorking) seg.classList.add('active');
+  });
+  if(isLongBreak()){
+    document.getElementById('cycle-bar').style.display = 'none';
+    longBreakText.style.display = 'block';
+  } else {
+    document.getElementById('cycle-bar').style.display = 'flex';
+    longBreakText.style.display = 'none';
+  }
+}
+
+function updateSessionProgress(){
+  const total = isWorking ? workDuration : (isLongBreak() ? longBreak : shortBreak);
+  const progress = ((total - remaining) / total) * 100;
+  timerProgress.style.width = `${Math.min(100, Math.max(0, progress))}%`;
+}
+
+/* total study progress (goal: 4 pomodoros = 100 minutes) */
+function updateTotalProgress(){
+  const maxGoal = 4 * WORK_MIN;
+  let percent = (totalStudied / maxGoal) * 100;
+  if(percent > 100) percent = 100;
+  totalProgress.style.width = `${percent}%`;
+  totalTimeLabel.textContent = `${Math.floor(totalStudied)} minutes studied today`;
+
+  if(!studyGoalUnlocked && percent >= 100){
+    studyGoalUnlocked = true;
+    notify('Daily study goal reached!', '#9c27b0');
+    // slide away study container and show stats
+    studyContainer.classList.add('hidden');
+    setTimeout(()=> {
+      statsPanel.classList.add('visible');
+      // fill stats
+      const breakTime = breakCount * SHORT_MIN;
+      statTotalStudy.textContent = `Total Study Time: ${Math.floor(totalStudied)} minutes`;
+      statBreaks.textContent = `Breaks Taken: ${breakCount}`;
+      statRatio.textContent = `Study:Break Ratio = ${Math.floor(totalStudied)} : ${breakTime}`;
+      statMusic.textContent = `Total Music Played: ${Math.floor(totalMusicSeconds/60)} minutes`;
+      statSongs.textContent = `Songs Completed: ${songsPlayed}`;
+    }, 680);
+  }
+}
+
+function tickSecond(){ // called every second while timer running
+  if(isWorking) totalStudied += 1/60; // increment fractional minutes
+}
+
+/* Start / Reset */
+function startPomodoro(){
+  if(interval) return; // already running
+  interval = setInterval(()=>{
+    remaining--;
+    updateTimerText();
+    updateSessionProgress();
+    tickSecond();
+    updateTotalProgress();
+    updateCycleVisualizer();
+
+    /* milestone example: notify at 100 minutes */
+    if(Math.floor(totalStudied) === 100) notify('100 Minutes Studied — Amazing!', '#673AB7');
+
+    if(remaining <= 0){
+      clearInterval(interval);
+      interval = null;
+      if(isWorking){
+        cycleCount++;
+        // decide break length
+        if(cycleCount % 4 === 0){
+          remaining = longBreak;
+          notify('Long Break Started — enjoy 20 minutes!', '#ff5722');
+        } else {
+          remaining = shortBreak;
+          notify('Short Break Started — relax!', '#ff9800');
+        }
+        breakCount++;
+        isWorking = false;
+      } else {
+        remaining = workDuration;
+        isWorking = true;
+        notify('Work Session Started — focus!', '#4CAF50');
+      }
+      updateTimerText();
+      updateSessionProgress();
+      updateCycleVisualizer();
+      // auto-start next segment
+      startPomodoro();
+    }
+  }, 1000);
+}
+
+function resetPomodoro(){
+  if(interval){ clearInterval(interval); interval = null; }
+  remaining = workDuration;
+  isWorking = true;
+  updateTimerText();
+  updateSessionProgress();
+  updateCycleVisualizer();
+}
+
+/* ===========================
+   Music player: loading & controls
+   =========================== */
+
+/* Safe loader for local directory listing:
+   requires the page to be served by a local server that shows directory listing
+   (like your Koder Web File Management). */
+async function loadMP3s(){
+  try{
+    const r = await fetch(`./${MusicFolder}`);
+    const text = await r.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, 'text/html');
+    const links = Array.from(doc.querySelectorAll('a'))
+                   .map(a=>a.getAttribute('href'))
+                   .filter(h=>h && h.toLowerCase().endsWith('.mp3'));
+    console.log('Directory fetch response', doc);
+    playlist = links.map(link => decodeURIComponent(link));
+    currentIndex = 0;
+    renderPlaylist();
+    if(playlist.length > 0){
+      // do not autoplay on mobile - only set src; playback requires user action
+      audio.src = decodeURIComponent(`/${MusicFolder}${playlist[currentIndex]}`);
+      updateTitle();
+      // display durations when metadata loads
+    } else {
+      notify('No MP3 files found in folder.', '#f44336');
+    }
+  }catch(err){
+    console.error('loadMP3s error', err);
+    console.log('Directory fetch response', r);
+    notify('Error loading MP3s (check local server).', '#f44336');
+  }
+}
+
+function renderPlaylist(){
+  playlistEl.innerHTML = '';
+  playlist.forEach((p, i) => {
+    const li = document.createElement('li');
+    let songTitle = (p.split('/').pop()).replace(/%20/g, ' '); // decode spaces
+    li.textContent = songTitle;
+    li.onclick = ()=> {
+      playSong(i);
+    };
+    if(i === currentIndex) li.classList.add('playing');
+    playlistEl.appendChild(li);
+  });
+}
+
+function highlightPlaying(){
+  Array.from(playlistEl.children).forEach((li, idx) => {
+    li.classList.toggle('playing', idx === currentIndex);
+  });
+  
+}
+
+/* play a song by index */
+function playSong(index){
+  if(!playlist || playlist.length === 0) return;
+  currentIndex = ((index % playlist.length) + playlist.length) % playlist.length;
+  audio.src = decodeURIComponent(`/${MusicFolder}${playlist[currentIndex]}`);
+  // ensure metadata loads before play on some browsers
+  const playPromise = audio.play();
+  if(playPromise !== undefined){
+    playPromise.catch(e=>{
+      // on mobile autoplay restriction - will be resolved after user interacts
+      console.log('play promise rejected (likely mobile autoplay):', e);
+    });
+  }
+  notify(`Now Playing: ${(decodeURIComponent(`/${MusicFolder}${playlist[currentIndex]}`)||'').split('/').pop()}`, '#2196f3');
+  songsPlayed++;
+  highlightPlaying();
+}
+
+/* play/pause toggle */
+function togglePlay(){
+  if(!audio.src) {
+    // attempt to set src from playlist if available
+    if(playlist.length > 0){
+      audio.src = decodeURIComponent(`/${MusicFolder}${playlist[currentIndex]}`);
+    } else {
+      notify('No songs loaded', '#f44336');
+      return;
+    }
+  }
+  if(audio.paused) audio.play().catch(()=>{/* ignore */});
+  else audio.pause();
+}
+
+/* next / prev / skip */
+function nextSong(){
+  if(!playlist.length) return;
+  if(shuffleChk.checked){
+    currentIndex = Math.floor(Math.random() * playlist.length);
+  } else {
+    currentIndex = (currentIndex + 1) % playlist.length;
+  }
+  playSong(currentIndex);
+}
+function prevSong(){
+  if(!playlist.length) return;
+  currentIndex = (currentIndex - 1 + playlist.length) % playlist.length;
+  playSong(currentIndex);
+}
+function skipSeconds(sec){
+  if(audio.src && !isNaN(audio.duration)){
+    audio.currentTime = Math.max(0, Math.min(audio.duration, audio.currentTime + sec));
+  }
+}
+
+function updateVolume(value){
+  const volume = Math.max(0, Math.min(100, Number(value))) / 100;
+  audio.volume = volume;
+  volumeValue.textContent = `${Math.round(volume * 100)}%`
+}
+
+/* track music playtime */
+setInterval(()=>{
+  if(!audio.paused && !audio.ended) totalMusicSeconds++;
+}, 1000);
+
+/* event handlers for audio */
+audio.addEventListener('loadedmetadata', ()=>{
+  // some mobile browsers require user activation for duration; guard NaN
+  if(!isFinite(audio.duration) || isNaN(audio.duration)){
+    totalTimeEl.textContent = '0:00';
+  } else {
+    totalTimeEl.textContent = formatMMSS(Math.floor(audio.duration));
+  }
+  updateTitle();
+});
+
+audio.addEventListener('timeupdate', ()=>{
+  const prog = (audio.currentTime / (audio.duration || 1)) * 100;
+  songProgress.style.width = `${Math.min(100, Math.max(0, prog))}%`;
+  currentTimeEl.textContent = formatMMSS(Math.floor(audio.currentTime));
+  if(isFinite(audio.duration) && !isNaN(audio.duration)) totalTimeEl.textContent = formatMMSS(Math.floor(audio.duration));
+  updateTitle();
+});
+
+audio.addEventListener('ended', ()=>{
+  if(repeatChk.checked) playSong(currentIndex);
+  else nextSong();
+});
+
+/* allow clicking song-progress to seek */
+songProgressContainer.addEventListener('click', (e)=>{
+  if(!audio.src || !isFinite(audio.duration)) return;
+  const rect = songProgressContainer.getBoundingClientRect();
+  const pct = (e.clientX - rect.left) / rect.width;
+  audio.currentTime = Math.max(0, Math.min(audio.duration, pct * audio.duration));
+});
+
+volumeSlider.addEventListener('input', (e)=>{
+  updateVolume(e.target.value);
+});
+
+updateVolume(volumeSlider.value);
+
+/* ===========================
+   Title updater (live)
+   =========================== */
+function updateTitle(){
+  // timer text
+  const timerDisplay = timerEl.textContent || formatMMSS(remaining);
+  const stage = isWorking ? `${(cycleCount % 4) + 1}/4` : (isLongBreak() ? 'Long Break' : 'Break');
+  // song name
+  const songName = (playlist[currentIndex] ? playlist[currentIndex].split('/').pop() : 'No Song');
+  const curT = formatMMSS(Math.floor(audio.currentTime || 0));
+  const totT = (isFinite(audio.duration) && !isNaN(audio.duration)) ? formatMMSS(Math.floor(audio.duration)) : '0:00';
+  document.title = `${timerDisplay} (${stage}) | ${songName} (${curT} / ${totT})`;
+}
+
+/* ===========================
+   iOS / Mobile unlock logic
+   =========================== */
+/* Many mobile browsers (iOS Safari) block audio playback and metadata until a user gesture.
+   We'll wait for the first tap anywhere on the document to 'unlock' audio and then load MP3s.
+*/
+function unlockAudioAndLoad(){
+  if(audioUnlocked) return;
+  audioUnlocked = true;
+  // create a silent short audio play attempt if needed (not necessary here but kept safe)
+  audio.muted = true;
+  const p = audio.play();
+  if(p && p.catch){
+    p.catch(()=>{}).finally(()=>{
+      audio.pause();
+      audio.muted = false;
+      // Now load playlist
+      loadMP3s();
+    });
+  } else {
+    audio.pause();
+    audio.muted = false;
+    loadMP3s();
+  }
+  // remove the listener
+  document.body.removeEventListener('click', unlockAudioAndLoad);
+}
+
+// ensure first tap initiates
+document.body.addEventListener('click', unlockAudioAndLoad, {once:true});
+
+/* ===========================
+   UI wiring: buttons
+   =========================== */
+startBtn.addEventListener('click', ()=>{ startPomodoro(); startBtn.blur(); });
+resetBtn.addEventListener('click', ()=>{ resetPomodoro(); resetBtn.blur(); });
+
+playBtn.addEventListener('click', ()=>{ togglePlay(); });
+prevBtn.addEventListener('click', ()=>{ prevSong(); });
+nextBtn.addEventListener('click', ()=>{ nextSong(); });
+back10.addEventListener('click', ()=>{ skipSeconds(-10); });
+fwd10.addEventListener('click', ()=>{ skipSeconds(10); });
+
+/* keyboard support for desktop */
+document.addEventListener('keydown', (e)=> {
+  if(e.code === 'Space'){ e.preventDefault(); togglePlay(); }
+  if(e.code === 'ArrowRight'){ skipSeconds(10); }
+  if(e.code === 'ArrowLeft'){ skipSeconds(-10); }
+});
+
+/* ===========================
+   Playlist rendering helper
+   =========================== */
+function renderPlaylist(){
+  playlistEl.innerHTML = '';
+  playlist.forEach((p, i) => {
+    const li = document.createElement('li');
+    const name = p.split('/').pop();
+    li.textContent = name;
+    li.onclick = ()=> playSong(i);
+    if(i === currentIndex) li.classList.add('playing');
+    playlistEl.appendChild(li);
+  });
+  highlightPlaying();
+}
+
+/* ===========================
+   Initial load: do not auto-load audio on first paint
+   We'll rely on user tap to trigger unlockAudioAndLoad(), which calls loadMP3s()
+   But for desktop where autoplay and metadata allowed, we also trigger load after short delay
+*/
+(async function initialAttempt(){
+  // If page is on desktop or server and not blocked, attempt load after a tiny delay
+  setTimeout(()=>{
+    // try to load if not on iOS Safari (quick UA heuristic)
+    const ua = navigator.userAgent || '';
+    const isiOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+    if(!isiOS){
+      loadMP3s();
+    } else {
+      // wait for user tap - notify user
+      notify('Tap anywhere to unlock audio on mobile', '#1976D2');
+    }
+  }, 350);
+})();
+
+/* expose loadMP3s in case we need manual trigger */
+window.loadMP3s = loadMP3s;
+
+/* ===========================
+   Graceful safety: attempt to keep UI live if something errors
+   =========================== */
+window.addEventListener('error', (ev)=>{
+  console.error('Unhandled error', ev);
+  // don't crash UI - notify user
+  notify('An unexpected error occurred. Check console for details.', '#f44336');
+});
+</script>
+</body>
+</html>
