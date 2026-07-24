@@ -32,7 +32,7 @@ python3 -m http.server
 
 ## GitHub Pages
 
-There is a GitHub Pages version of this if you would rather have it ready to use without any hinderance. Click the link that is below the description of this repository or check it out [here](https://xia-qi2450.github.io/Pomodoro-MusicPlayer/).
+There is a GitHub Pages version of this if you would rather have it ready to use without any hinderance. Click the link that is below the description of this repository or check it out [here](https://xia-qi2450.github.io/Deep-Focus/).
 
 ---
 
