@@ -2,448 +2,803 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Pomodoro + Music Player</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="color-scheme" content="dark" />
+<title>Deep Focus — Pomodoro &amp; Music Player</title>
 <style>
   :root{
-    --bg:#f0f2f5; --card:#fff; --accent:#4CAF50; --accent-2:#2196F3; --danger:#f44336;
-    --muted:#888;
+    --bg:#1a1b26;
+    --surface:#1f2335;
+    --surface-2:#292e42;
+    --border:#3b4261;
+    --text:#c0caf5;
+    --text-muted:#9aa5ce;
+    --text-faint:#565f89;
+    --work:#7aa2f7;
+    --break:#7dcfff;
+    --danger:#f7768e;
+    --success:#9ece6a;
+    --radius-lg:18px;
+    --radius-md:12px;
+    --radius-sm:8px;
+    --shadow:0 20px 45px rgba(0,0,0,.45);
+    --mono: ui-monospace, "SFMono-Regular", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
-  html,body{height:100%; margin:0; font-family: "Segoe UI", Roboto, Arial, sans-serif; background:var(--bg); color:#222}
-  .wrap{display:flex; flex-direction:column; align-items:center; padding:18px 12px 60px;}
-  h1{margin:6px 0 18px; font-size:22px; letter-spacing:0.3px}
-  /* Notification bar */
-  #notif-bar{
-    position:fixed; left:12px; right:12px; top:-72px;
-    background:var(--accent); color:#fff; padding:12px 16px; border-radius:10px;
-    box-shadow:0 6px 20px rgba(0,0,0,.12); font-weight:600; text-align:center; z-index:9999;
-    transition:top .45s ease, opacity .45s ease;
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; }
+  body{
+    font-family:var(--sans); color:var(--text);
+    background:
+      radial-gradient(ellipse 700px 420px at 50% -10%, rgba(122,162,247,.14), transparent 70%),
+      var(--bg);
+    min-height:100%;
   }
-  #notif-bar.show{ top:12px; }
+  a{ color:var(--break); }
+  :focus-visible{ outline:2px solid var(--work); outline-offset:2px; }
 
-  /* Card */
-  .card{width:100%; max-width:760px; background:var(--card); border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.09);
-        padding:18px; margin:12px 0;}
-  #timer{font-size:56px; color:var(--accent); margin:0 0 6px 0; font-weight:600}
-  .progress-container, .total-progress-container{width:100%; height:14px; background:#eee; border-radius:999px; overflow:hidden; margin:12px 0}
-  .progress-bar{height:100%; width:0%; background:linear-gradient(90deg,var(--accent),#81C784); transition:width .25s linear}
-  .total-bar{background:linear-gradient(90deg,var(--accent-2),#64B5F6)}
-  .controls{margin:6px 0}
-  .controls button{background:var(--accent); color:#fff; border:none; padding:10px 14px; border-radius:8px; margin-right:8px; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,.06)}
-  .controls button:hover{transform:translateY(-2px)}
-  .small{padding:8px 10px; font-size:14px}
+  /* ---------- Layout ---------- */
+  .page{ max-width:760px; margin:0 auto; padding:20px 16px 60px; }
+  .topbar{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; }
+  .brand{ display:flex; align-items:center; gap:12px; }
+  .brand-mark{ font-size:26px; color:var(--work); }
+  .brand h1{ margin:0; font-size:20px; letter-spacing:.2px; }
+  .tagline{ margin:2px 0 0; font-size:13px; color:var(--text-muted); }
 
-  /* Cycle Visualizer */
-  #cycle-bar{display:flex; gap:8px; margin:12px 0; height:14px}
-  .cycle-segment{flex:1; background:#ddd; border-radius:8px; transition:background .25s, opacity .35s}
-  .cycle-segment.completed{background:var(--accent)}
-  @keyframes flashSegment {0%{box-shadow:0 0 6px rgba(76,175,80,.1)}50%{box-shadow:0 0 18px rgba(76,175,80,.34)}100%{box-shadow:0 0 6px rgba(76,175,80,.1)}}
-  .cycle-segment.active{ animation:flashSegment 1.2s infinite; }
+  .card{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg);
+    box-shadow:var(--shadow); padding:20px; margin:0 0 16px;
+  }
+  .card h2{ margin:0; font-size:15px; }
+  .muted{ color:var(--text-muted); font-size:13px; }
+  .small{ font-size:12px; }
 
-  #long-break-text{display:none; margin:10px 0; color:var(--danger); font-weight:600; text-align:center}
+  /* ---------- Notification ---------- */
+  #notif{
+    position:fixed; left:50%; top:16px; transform:translate(-50%,-140%);
+    min-width:240px; max-width:90vw; padding:12px 20px; border-radius:999px;
+    background:var(--surface-2); border:1px solid var(--border); color:var(--text);
+    font-weight:600; font-size:13.5px; text-align:center; z-index:999;
+    box-shadow:var(--shadow); transition:transform .35s ease, opacity .35s ease; opacity:0;
+    pointer-events:none;
+  }
+  #notif.show{ transform:translate(-50%,0); opacity:1; }
+  #notif.notif-success{ border-color:var(--success); }
+  #notif.notif-error{ border-color:var(--danger); }
+  #notif.notif-warn{ border-color:#e0af68; }
+  #notif.notif-info{ border-color:var(--break); }
 
-  /* Study container + stats panel */
-  #study-container{transition:all .7s ease}
-  #study-container.hidden{opacity:0; transform:translateY(-20px); pointer-events:none}
-  #stats-panel{display:none; opacity:0; transform:translateY(20px); transition:all .7s ease; background:var(--card); padding:16px; border-radius:10px; box-shadow:0 8px 18px rgba(0,0,0,.06); max-width:760px; width:100%}
-  #stats-panel.visible{display:block; opacity:1; transform:translateY(0)}
-  #stats-panel h3{margin:0 0 8px}
-  #stats-panel p{margin:6px 0; color:#333; font-weight:600}
+  /* ---------- Buttons & controls ---------- */
+  .btn{
+    font:inherit; font-weight:600; font-size:14px; padding:10px 18px; border-radius:999px;
+    border:1px solid transparent; cursor:pointer; transition:transform .15s ease, background .2s ease, border-color .2s ease;
+  }
+  .btn:active{ transform:scale(.97); }
+  .btn-primary{ background:var(--work); color:#16161e; }
+  .btn-primary:hover{ background:#8fb2ff; }
+  .btn-secondary{ background:transparent; color:var(--break); border-color:var(--break); }
+  .btn-secondary:hover{ background:rgba(125,207,255,.12); }
+  .btn-ghost{ background:transparent; color:var(--text-muted); border-color:var(--border); }
+  .btn-ghost:hover{ color:var(--text); border-color:var(--text-muted); }
+  .link-btn{ background:none; border:none; color:var(--text-muted); text-decoration:underline; cursor:pointer; font-size:13px; padding:0; }
+  .link-btn:hover{ color:var(--text); }
+  .icon-btn{
+    width:40px; height:40px; border-radius:50%; border:1px solid var(--border); background:var(--surface-2);
+    color:var(--text); font-size:15px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer;
+    transition:background .2s ease, transform .15s ease; line-height:1;
+  }
+  .icon-btn:hover{ background:var(--surface); }
+  .icon-btn:active{ transform:scale(.94); }
+  .icon-btn:disabled{ opacity:.35; cursor:not-allowed; }
+  .icon-btn-lg{ width:54px; height:54px; font-size:20px; background:var(--work); color:#16161e; border-color:var(--work); }
+  .icon-btn-lg:hover{ background:#8fb2ff; }
 
-  /* Music card */
-  .music-card{max-width:760px; width:100%; padding:16px; border-radius:14px; background:var(--card); box-shadow:0 10px 30px rgba(0,0,0,.08); margin:18px 0}
-  .music-controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
-  .music-controls button{background:var(--accent-2); color:#fff; border:none; padding:8px 12px; border-radius:8px; cursor:pointer}
-  .music-controls label{display:inline-flex; align-items:center; gap:6px; color:#444; margin-left:8px}
-  .volume-control{display:inline-flex; align-items:center; gap:8px; color:#444; margin-left:8px}
-  .volume-control input[type="range"]{width:140px}
-  #volumeValue{min-width:44px; color:var(--muted); font-size:13px}
-  #song-time{display:flex; justify-content:space-between; font-size:13px; color:var(--muted); margin-top:10px}
-  #song-progress-container{height:8px; background:#eee; border-radius:6px; overflow:hidden; margin-top:8px; cursor:pointer}
-  #song-progress{height:100%; width:0%; background:linear-gradient(90deg,var(--accent-2),#64B5F6); transition:width .15s linear}
-  #playlist{list-style:none; padding:0; margin:12px 0 0; max-height:240px; overflow:auto}
-  #playlist li{padding:8px 6px; border-bottom:1px solid #f0f0f0; cursor:pointer}
-  #playlist li.playing{color:var(--accent-2); font-weight:700}
+  input[type="checkbox"]{ accent-color:var(--work); width:16px; height:16px; }
+  input[type="range"]{ accent-color:var(--break); }
+  input[type="number"]{
+    font:inherit; background:var(--surface-2); border:1px solid var(--border); color:var(--text);
+    border-radius:var(--radius-sm); padding:8px 10px; width:88px;
+  }
 
-  /* small responsiveness */
-  @media (max-width:520px){
-    #timer{font-size:44px}
-    .controls button{padding:8px 10px}
-    .music-controls button{padding:8px 10px}
+  /* ---------- Timer card ---------- */
+  .phase-label{ text-align:center; text-transform:uppercase; letter-spacing:2px; font-size:12px; color:var(--text-muted); margin:0 0 6px; transition:color .3s ease; }
+  .phase-label.phase-break{ color:var(--break); }
+  .timer-display{
+    font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:clamp(44px,10vw,64px);
+    font-weight:600; letter-spacing:1px; text-align:center; margin:0 0 16px; color:var(--work);
+    transition:color .3s ease;
+  }
+  .timer-display.phase-break{ color:var(--break); }
+
+  .progress-track{ width:100%; height:12px; background:var(--surface-2); border-radius:999px; overflow:hidden; border:1px solid var(--border); }
+  .progress-track.thin{ height:6px; margin-top:10px; cursor:pointer; }
+  .progress-fill{ display:block; height:100%; width:0%; border-radius:999px; transition:width .25s linear; }
+  .fill-work{ background:linear-gradient(90deg,var(--work),#a9c4fb); }
+  .fill-break{ background:linear-gradient(90deg,var(--break),#b8e8ff); }
+  .fill-total{ background:linear-gradient(90deg,var(--break),var(--work)); }
+  .fill-music{ background:linear-gradient(90deg,var(--break),#b8e8ff); }
+
+  .controls{ display:flex; gap:10px; justify-content:center; margin:16px 0 4px; }
+
+  .cycle-bar{ display:flex; gap:8px; margin:18px 0 2px; }
+  .cycle-seg{ flex:1; height:10px; border-radius:6px; background:var(--surface-2); border:1px solid var(--border); transition:background .25s ease, border-color .25s ease; }
+  .cycle-seg.completed{ background:var(--work); border-color:var(--work); }
+  .cycle-seg.active{ animation:pulseSeg 1.4s ease-in-out infinite; }
+  @keyframes pulseSeg{
+    0%,100%{ box-shadow:0 0 0 rgba(122,162,247,0); background:var(--work); }
+    50%{ box-shadow:0 0 14px rgba(122,162,247,.6); background:#8fb2ff; }
+  }
+  .long-break-note{ text-align:center; color:var(--break); font-weight:600; font-size:13.5px; margin:14px 0 0; }
+
+  /* ---------- Progress + stats cards ---------- */
+  .progress-card-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  #totalLabel{ margin:8px 0 0; }
+  .stats-card p{ margin:6px 0; font-weight:600; font-size:14px; }
+  .stats-card h2{ margin-bottom:8px; }
+
+  /* ---------- Music card ---------- */
+  .music-head{ display:flex; align-items:center; gap:14px; margin-bottom:16px; }
+  .vinyl{
+    width:56px; height:56px; border-radius:50%; flex-shrink:0;
+    background:repeating-radial-gradient(circle at center, #0c0b09 0 2px, #1a1712 2px 4px);
+    border:3px solid #0c0b09; position:relative; animation:spin 3s linear infinite; animation-play-state:paused;
+  }
+  .vinyl.playing{ animation-play-state:running; }
+  .vinyl::after{
+    content:""; position:absolute; inset:20px; border-radius:50%; background:var(--work);
+    box-shadow:0 0 0 2px #0c0b09;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  @media (prefers-reduced-motion:reduce){
+    .vinyl{ animation:none !important; }
+    .cycle-seg.active{ animation:none !important; background:var(--work); }
+  }
+  .track-meta{ flex:1; min-width:0; }
+  .track-name{ margin:0; font-weight:600; font-size:14.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .song-time{ display:flex; justify-content:space-between; font-size:12px; color:var(--text-muted); margin-top:6px; }
+
+  .music-controls{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:16px 0; }
+  .toggle{ display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--text-muted); cursor:pointer; }
+  .volume{ display:inline-flex; align-items:center; gap:8px; font-size:13px; color:var(--text-muted); margin-left:auto; }
+  .volume input[type="range"]{ width:120px; }
+  #volumeValue{ min-width:38px; }
+
+  .drop-zone{
+    border:1.5px dashed var(--border); border-radius:var(--radius-md); padding:18px; text-align:center;
+    transition:border-color .2s ease, background .2s ease; margin-bottom:14px;
+  }
+  .drop-zone.drag-over{ border-color:var(--work); background:rgba(122,162,247,.08); }
+  .drop-zone p{ margin:8px 0 0; }
+
+  .playlist{ list-style:none; margin:0; padding:0; max-height:220px; overflow:auto; border-top:1px solid var(--border); }
+  .playlist li{
+    padding:9px 6px; border-bottom:1px solid var(--border); cursor:pointer; font-size:14px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .playlist li:hover{ background:var(--surface-2); }
+  .playlist li.playing{ color:var(--break); font-weight:700; }
+  .playlist:empty{ display:none; }
+
+  .footer{ text-align:center; color:var(--text-faint); font-size:12px; margin-top:24px; }
+
+  /* ---------- Settings dialog ---------- */
+  dialog#settingsDialog{
+    border:1px solid var(--border); border-radius:var(--radius-lg); background:var(--surface);
+    color:var(--text); padding:0; width:min(440px,92vw); max-height:85vh; overflow:auto; box-shadow:var(--shadow);
+  }
+  dialog#settingsDialog::backdrop{ background:rgba(16,17,30,.65); backdrop-filter:blur(2px); }
+  #settingsForm{ padding:20px 22px 22px; display:flex; flex-direction:column; gap:14px; }
+  .panel-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+  .panel-head h2{ font-size:17px; }
+  .field-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:14px; }
+  .field-row.checkbox-row{ justify-content:flex-start; }
+  .field-row.checkbox-row label{ display:flex; align-items:center; gap:8px; }
+  .panel-actions{ display:flex; justify-content:space-between; gap:10px; margin-top:6px; }
+  .settings-hint{ margin:-6px 0 4px; }
+
+  /* ---------- Study container hide/show ---------- */
+  #studyContainer{ transition:all .6s ease; }
+  #studyContainer.hidden{ opacity:0; transform:translateY(-16px); pointer-events:none; height:0; overflow:hidden; margin:0; }
+  #statsPanel{ opacity:0; transform:translateY(16px); transition:all .6s ease; }
+  #statsPanel.visible{ opacity:1; transform:translateY(0); }
+
+  @media (max-width:480px){
+    .music-controls{ gap:8px; }
+    .volume{ margin-left:0; width:100%; }
+    .field-row{ flex-wrap:wrap; }
   }
 </style>
 </head>
 <body>
-  <div id="notif-bar"></div>
+  <div id="notif" role="status" aria-live="polite"></div>
 
-  <div class="wrap">
-    <h1>Pomodoro Focus + Music Player 🎧</h1>
-
-    <div class="card">
-      <div id="timer">25:00</div>
-
-      <div class="progress-container"><div id="timerProgress" class="progress-bar"></div></div>
-
-      <div class="controls">
-        <button class="small" id="startBtn">Start</button>
-        <button class="small" id="resetBtn">Reset</button>
+  <div class="page">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">◍</span>
+        <div>
+          <h1>Deep Focus</h1>
+          <p class="tagline">Pomodoro timer + your own music, all local</p>
+        </div>
       </div>
+      <button id="settingsBtn" class="icon-btn" aria-haspopup="dialog" title="Settings" aria-label="Open settings">⚙</button>
+    </header>
 
-      <div id="cycle-bar">
-        <div class="cycle-segment"></div>
-        <div class="cycle-segment"></div>
-        <div class="cycle-segment"></div>
-        <div class="cycle-segment"></div>
-      </div>
+    <main>
+      <section class="card" aria-label="Pomodoro timer">
+        <p id="phaseLabel" class="phase-label">Focus session</p>
+        <div id="timer" class="timer-display">25:00</div>
+        <div class="progress-track"><span id="timerProgress" class="progress-fill fill-work"></span></div>
+        <div class="controls">
+          <button id="startBtn" class="btn btn-primary">Start</button>
+          <button id="resetBtn" class="btn btn-ghost">Reset</button>
+        </div>
+        <div id="cycleBar" class="cycle-bar"></div>
+        <p id="longBreakNote" class="long-break-note" hidden>Long break — stretch, hydrate, rest your eyes.</p>
+      </section>
 
-      <div id="long-break-text">20-Minute Break!</div>
+      <section id="studyContainer" class="card" aria-label="Today's focus progress">
+        <div class="progress-card-head">
+          <h2>Today's focus</h2>
+          <button id="resetStatsBtn" class="link-btn">Reset</button>
+        </div>
+        <div class="progress-track"><span id="totalProgress" class="progress-fill fill-total"></span></div>
+        <p id="totalLabel" class="muted">0 minutes focused today</p>
+      </section>
 
-      <div id="study-container">
-        <h3 style="margin:10px 0 0">Total Study Progress</h3>
-        <div class="total-progress-container"><div id="totalProgress" class="progress-bar total-bar"></div></div>
-        <div id="totalTimeLabel" style="margin-top:8px; color:#222">0 minutes studied today</div>
-      </div>
-    </div>
+      <section id="statsPanel" class="card stats-card" hidden aria-label="Daily summary">
+        <h2>Daily summary</h2>
+        <p id="statTotalStudy">Total focus time: 0 min</p>
+        <p id="statBreaks">Breaks taken: 0</p>
+        <p id="statRatio">Focus : Break ratio — 0 : 0</p>
+        <p id="statMusic">Music played: 0 min</p>
+        <p id="statSongs">Songs completed: 0</p>
+        <button id="resetStatsBtn2" class="link-btn" style="margin-top:8px">Reset today's progress</button>
+      </section>
 
-    <div id="stats-panel">
-      <h3>Daily Stats</h3>
-      <p id="stat-total-study">Total Study Time: 0 min</p>
-      <p id="stat-breaks">Breaks Taken: 0</p>
-      <p id="stat-ratio">Study:Break Ratio: 0 : 0</p>
-      <p id="stat-music">Total Music Played: 0 min</p>
-      <p id="stat-songs">Songs Completed: 0</p>
-    </div>
+      <section class="card music-card" aria-label="Music player">
+        <div class="music-head">
+          <div id="vinyl" class="vinyl" aria-hidden="true"></div>
+          <div class="track-meta">
+            <p id="trackName" class="track-name">No music folder selected</p>
+            <div class="song-time"><span id="curTime">0:00</span><span id="totalTime">0:00</span></div>
+            <div id="songProgressTrack" class="progress-track thin" role="slider" tabindex="0"
+                 aria-label="Seek in track" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">
+              <span id="songProgress" class="progress-fill fill-music"></span>
+            </div>
+          </div>
+        </div>
 
-    <div class="music-card">
-      <h2 style="margin:0 0 8px">Music Player</h2>
-      <div class="music-controls">
-        <button id="prevBtn">⏮</button>
-        <button id="playBtn">⏯</button>
-        <button id="nextBtn">⏭</button>
-        <button id="back10">⏪ 10s</button>
-        <button id="fwd10">10s ⏩</button>
-        <label style="margin-left:auto"><input type="checkbox" id="shuffle"> Shuffle</label>
-        <label><input type="checkbox" id="repeat"> Repeat</label>
-        <label class="volume-control">
-          Volume
-          <input type="range" id="volumeSlider" min="0" max="100" value="100" aria-label="Music volume">
-          <span id="volumeValue">100%</span>
-        </label>
-      </div>
+        <div class="music-controls">
+          <button id="prevBtn" class="icon-btn" aria-label="Previous track" disabled>⏮</button>
+          <button id="playPauseBtn" class="icon-btn icon-btn-lg" aria-label="Play">▶</button>
+          <button id="nextBtn" class="icon-btn" aria-label="Next track" disabled>⏭</button>
+          <button id="back10Btn" class="icon-btn" aria-label="Back 10 seconds" disabled>−10</button>
+          <button id="fwd10Btn" class="icon-btn" aria-label="Forward 10 seconds" disabled>+10</button>
+          <label class="toggle"><input type="checkbox" id="shuffleChk"> Shuffle</label>
+          <label class="toggle"><input type="checkbox" id="repeatChk"> Repeat</label>
+          <div class="volume">
+            <label for="volumeSlider">Vol</label>
+            <input type="range" id="volumeSlider" min="0" max="100" value="80" aria-label="Volume">
+            <span id="volumeValue">80%</span>
+          </div>
+        </div>
 
-      <div id="song-time">
-        <span id="current-time">0:00</span>
-        <span id="total-time">0:00</span>
-      </div>
+        <div id="dropZone" class="drop-zone">
+          <button id="chooseFolderBtn" class="btn btn-secondary">Choose Music Folder</button>
+          <p class="muted small">or drag a folder of .mp3 files here — files never leave your device</p>
+          <input type="file" id="folderInput" webkitdirectory directory mozdirectory multiple
+                 accept="audio/mpeg,.mp3" hidden aria-hidden="true">
+        </div>
 
-      <div id="song-progress-container"><div id="song-progress"></div></div>
+        <ul id="playlist" class="playlist" role="listbox" aria-label="Playlist"></ul>
+        <audio id="audio" preload="metadata"></audio>
+      </section>
+    </main>
 
-      <ul id="playlist"></ul>
-
-      <audio id="audioPlayer" preload="metadata"></audio>
-    </div>
+    <p class="footer">Runs entirely in your browser — no server, no uploads, no tracking.</p>
   </div>
 
+  <dialog id="settingsDialog" aria-labelledby="settingsTitle">
+    <form id="settingsForm">
+      <div class="panel-head">
+        <h2 id="settingsTitle">Settings</h2>
+        <button type="button" id="closeSettingsBtn" class="icon-btn" aria-label="Close settings">✕</button>
+      </div>
+      <p class="muted settings-hint">Changes to lengths apply the next time that session starts.</p>
+
+      <div class="field-row">
+        <label for="workMinInput">Focus length (minutes)</label>
+        <input type="number" id="workMinInput" min="1" max="180" required>
+      </div>
+      <div class="field-row">
+        <label for="shortBreakInput">Short break (minutes)</label>
+        <input type="number" id="shortBreakInput" min="1" max="60" required>
+      </div>
+      <div class="field-row">
+        <label for="longBreakInput">Long break (minutes)</label>
+        <input type="number" id="longBreakInput" min="1" max="120" required>
+      </div>
+      <div class="field-row">
+        <label for="cyclesInput">Focus sessions before long break</label>
+        <input type="number" id="cyclesInput" min="2" max="12" required>
+      </div>
+      <div class="field-row checkbox-row">
+        <label><input type="checkbox" id="autoStartInput"> Auto-start next session</label>
+      </div>
+      <div class="field-row checkbox-row">
+        <label><input type="checkbox" id="soundInput"> Play a sound when a session ends</label>
+      </div>
+
+      <div class="panel-actions">
+        <button type="button" id="restoreDefaultsBtn" class="btn btn-ghost">Restore defaults</button>
+        <button type="submit" class="btn btn-primary">Save settings</button>
+      </div>
+    </form>
+  </dialog>
+
 <script>
-/* ===========================
-   Configuration & Variables
-   =========================== */
-const WORK_MIN = 25;
-const SHORT_MIN = 5;
-const LONG_MIN = 20; // requested 20-minute long break
+/* =========================================================================
+   Deep Focus — Pomodoro + local Music Player
+   Everything runs client-side: no server, no network requests, no external
+   fonts/scripts. Settings, daily stats and player prefs are kept in
+   localStorage (falls back to in-memory quietly if storage is unavailable).
+   ========================================================================= */
 
-let workDuration = WORK_MIN * 60;
-let shortBreak = SHORT_MIN * 60;
-let longBreak = LONG_MIN * 60;
+/* ---------------------------------------------------------------------
+   Defaults & persistence
+   --------------------------------------------------------------------- */
+const DEFAULTS = {
+  workMin: 25,
+  shortBreakMin: 5,
+  longBreakMin: 20,
+  cyclesBeforeLongBreak: 4,
+  autoStartNext: true,
+  soundEnabled: true,
+};
+const SETTINGS_KEY = 'deepFocusSettings.v1';
+const STATS_KEY = 'deepFocusStats.v1';
+const PREFS_KEY = 'deepFocusPlayerPrefs.v1';
 
-let remaining = workDuration;
-let interval = null;
-let cycleCount = 0;      // number of completed work sessions
+function loadSettings(){
+  try{
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if(!raw) return { ...DEFAULTS };
+    return { ...DEFAULTS, ...JSON.parse(raw) };
+  }catch(e){ return { ...DEFAULTS }; }
+}
+function saveSettings(){
+  try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }catch(e){ /* storage unavailable */ }
+}
+
+function todayKey(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function loadStats(){
+  try{
+    const raw = localStorage.getItem(STATS_KEY);
+    if(!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed.date === todayKey() ? parsed : null;
+  }catch(e){ return null; }
+}
+function saveStats(){
+  try{
+    localStorage.setItem(STATS_KEY, JSON.stringify({
+      date: todayKey(), totalStudied, breakCount, cycleCount, totalMusicSeconds, songsPlayed, studyGoalUnlocked
+    }));
+  }catch(e){ /* storage unavailable */ }
+}
+
+function loadPlayerPrefs(){
+  try{
+    const raw = localStorage.getItem(PREFS_KEY);
+    if(!raw) return { volume:80, shuffle:false, repeat:false };
+    return { volume:80, shuffle:false, repeat:false, ...JSON.parse(raw) };
+  }catch(e){ return { volume:80, shuffle:false, repeat:false }; }
+}
+function savePlayerPrefs(){
+  try{
+    localStorage.setItem(PREFS_KEY, JSON.stringify({
+      volume: Number(volumeSlider.value), shuffle: shuffleChk.checked, repeat: repeatChk.checked
+    }));
+  }catch(e){ /* storage unavailable */ }
+}
+
+/* ---------------------------------------------------------------------
+   State
+   --------------------------------------------------------------------- */
+let settings = loadSettings();
+let workDuration, shortBreakDur, longBreakDur; // seconds, derived from settings
+function applySettingsToDurations(){
+  workDuration = settings.workMin * 60;
+  shortBreakDur = settings.shortBreakMin * 60;
+  longBreakDur = settings.longBreakMin * 60;
+}
+applySettingsToDurations();
+
+let remaining = workDuration;   // seconds left in the current phase
 let isWorking = true;
-let totalStudied = 0;    // minutes (fractional increment)
+let cycleCount = 0;             // number of completed focus sessions
+let phaseStarted = false;       // has the current phase's countdown been started at least once
+let phaseEndAt = null;          // epoch ms when the running phase should end
+let tickHandle = null;
+
+let totalStudied = 0;           // minutes, fractional (tracked precisely every tick)
 let breakCount = 0;
-
 let studyGoalUnlocked = false;
+let lastTotalProgressRefresh = 0; // epoch ms — the "Today's focus" card redraws at most once a minute
 
-let playlist = [];
+let playlist = [];              // [{name, url}]
 let currentIndex = 0;
-const audio = document.getElementById('audioPlayer');
 let totalMusicSeconds = 0;
 let songsPlayed = 0;
 
-/* iOS audio unlock: wait for user interaction */
-let audioUnlocked = false;
+/* ---------------------------------------------------------------------
+   DOM references
+   --------------------------------------------------------------------- */
+const notifEl = document.getElementById('notif');
 
-/* DOM refs */
+const phaseLabelEl = document.getElementById('phaseLabel');
+const timerEl = document.getElementById('timer');
+const timerProgressEl = document.getElementById('timerProgress');
 const startBtn = document.getElementById('startBtn');
 const resetBtn = document.getElementById('resetBtn');
+const cycleBarEl = document.getElementById('cycleBar');
+const longBreakNoteEl = document.getElementById('longBreakNote');
+
+const studyContainerEl = document.getElementById('studyContainer');
+const totalProgressEl = document.getElementById('totalProgress');
+const totalLabelEl = document.getElementById('totalLabel');
+const resetStatsBtn = document.getElementById('resetStatsBtn');
+const resetStatsBtn2 = document.getElementById('resetStatsBtn2');
+
+const statsPanelEl = document.getElementById('statsPanel');
+const statTotalStudyEl = document.getElementById('statTotalStudy');
+const statBreaksEl = document.getElementById('statBreaks');
+const statRatioEl = document.getElementById('statRatio');
+const statMusicEl = document.getElementById('statMusic');
+const statSongsEl = document.getElementById('statSongs');
+
+const vinylEl = document.getElementById('vinyl');
+const trackNameEl = document.getElementById('trackName');
+const curTimeEl = document.getElementById('curTime');
+const totalTimeEl = document.getElementById('totalTime');
+const songProgressTrack = document.getElementById('songProgressTrack');
+const songProgressEl = document.getElementById('songProgress');
+
 const prevBtn = document.getElementById('prevBtn');
-const playBtn = document.getElementById('playBtn');
+const playPauseBtn = document.getElementById('playPauseBtn');
 const nextBtn = document.getElementById('nextBtn');
-const back10 = document.getElementById('back10');
-const fwd10 = document.getElementById('fwd10');
-const shuffleChk = document.getElementById('shuffle');
-const repeatChk = document.getElementById('repeat');
+const back10Btn = document.getElementById('back10Btn');
+const fwd10Btn = document.getElementById('fwd10Btn');
+const shuffleChk = document.getElementById('shuffleChk');
+const repeatChk = document.getElementById('repeatChk');
 const volumeSlider = document.getElementById('volumeSlider');
-const volumeValue = document.getElementById('volumeValue');
+const volumeValueEl = document.getElementById('volumeValue');
 
-const timerEl = document.getElementById('timer');
-const timerProgress = document.getElementById('timerProgress');
-const totalProgress = document.getElementById('totalProgress');
-const totalTimeLabel = document.getElementById('totalTimeLabel');
-
-const cycleSegments = document.querySelectorAll('.cycle-segment');
-const longBreakText = document.getElementById('long-break-text');
-
-const notifBar = document.getElementById('notif-bar');
-
+const dropZone = document.getElementById('dropZone');
+const chooseFolderBtn = document.getElementById('chooseFolderBtn');
+const folderInput = document.getElementById('folderInput');
 const playlistEl = document.getElementById('playlist');
-const songProgress = document.getElementById('song-progress');
-const songProgressContainer = document.getElementById('song-progress-container');
-const currentTimeEl = document.getElementById('current-time');
-const totalTimeEl = document.getElementById('total-time');
+const audio = document.getElementById('audio');
 
-const studyContainer = document.getElementById('study-container');
-const statsPanel = document.getElementById('stats-panel');
-const statTotalStudy = document.getElementById('stat-total-study');
-const statBreaks = document.getElementById('stat-breaks');
-const statRatio = document.getElementById('stat-ratio');
-const statMusic = document.getElementById('stat-music');
-const statSongs = document.getElementById('stat-songs');
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsDialog = document.getElementById('settingsDialog');
+const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+const settingsForm = document.getElementById('settingsForm');
+const workMinInput = document.getElementById('workMinInput');
+const shortBreakInput = document.getElementById('shortBreakInput');
+const longBreakInput = document.getElementById('longBreakInput');
+const cyclesInput = document.getElementById('cyclesInput');
+const autoStartInput = document.getElementById('autoStartInput');
+const soundInput = document.getElementById('soundInput');
+const restoreDefaultsBtn = document.getElementById('restoreDefaultsBtn');
 
-let MusicFolder = 'Music/Playlist/'; // relative path to local music folder
-
-audio.volume = 1;
-
-/* ===========================
-   Notification helper
-   =========================== */
-function notify(msg, color='#4CAF50'){
-  notifBar.textContent = msg;
-  notifBar.style.background = color;
-  notifBar.classList.add('show');
-  setTimeout(()=> notifBar.classList.remove('show'), 3200);
-  setTimeout(()=> notifBar.textContent = '', 3500);
+/* ---------------------------------------------------------------------
+   Notifications
+   --------------------------------------------------------------------- */
+let notifT1 = null, notifT2 = null;
+function notify(msg, type = 'info'){
+  clearTimeout(notifT1); clearTimeout(notifT2);
+  notifEl.textContent = msg;
+  notifEl.className = `show notif-${type}`;
+  notifT1 = setTimeout(() => notifEl.classList.remove('show'), 3200);
+  notifT2 = setTimeout(() => { notifEl.textContent = ''; }, 3600);
 }
 
-/* ===========================
-   Timer / Pomodoro logic
-   =========================== */
+/* ---------------------------------------------------------------------
+   Timer helpers
+   --------------------------------------------------------------------- */
 function formatMMSS(sec){
-  if(!sec || isNaN(sec)) return '0:00';
+  if(!isFinite(sec) || isNaN(sec)) return '0:00';
   sec = Math.max(0, Math.floor(sec));
-  const m = Math.floor(sec/60);
+  const m = Math.floor(sec / 60);
   const s = sec % 60;
-  return `${m}:${s<10?'0'+s:s}`;
+  return `${m}:${s < 10 ? '0' + s : s}`;
+}
+
+function isLongBreak(){
+  return !isWorking && cycleCount % settings.cyclesBeforeLongBreak === 0 && cycleCount !== 0;
+}
+function currentPhaseTotal(){
+  if(isWorking) return workDuration;
+  return isLongBreak() ? longBreakDur : shortBreakDur;
 }
 
 function updateTimerText(){
   timerEl.textContent = formatMMSS(remaining);
-  updateTitle();
+  const label = isWorking ? 'Focus session' : (isLongBreak() ? 'Long break' : 'Short break');
+  phaseLabelEl.textContent = label;
+  phaseLabelEl.classList.toggle('phase-break', !isWorking);
+  timerEl.classList.toggle('phase-break', !isWorking);
+  updateDocTitle();
+}
+function updateSessionProgress(){
+  const total = currentPhaseTotal();
+  const pct = total > 0 ? ((total - remaining) / total) * 100 : 0;
+  timerProgressEl.style.width = `${Math.min(100, Math.max(0, pct))}%`;
+  timerProgressEl.classList.toggle('fill-work', isWorking);
+  timerProgressEl.classList.toggle('fill-break', !isWorking);
+}
+function updateStartBtnLabel(){
+  startBtn.textContent = tickHandle ? 'Pause' : (phaseStarted ? 'Resume' : 'Start');
 }
 
-function isLongBreak(){ return !isWorking && cycleCount % 4 === 0 && cycleCount !== 0; }
+function renderCycleBar(){
+  cycleBarEl.innerHTML = '';
+  for(let i = 0; i < settings.cyclesBeforeLongBreak; i++){
+    const seg = document.createElement('div');
+    seg.className = 'cycle-seg';
+    cycleBarEl.appendChild(seg);
+  }
+  refreshCycleBar();
+}
+function refreshCycleBar(){
+  const n = settings.cyclesBeforeLongBreak;
+  const posInCycle = cycleCount % n;
+  const segs = cycleBarEl.children;
+  for(let i = 0; i < segs.length; i++){
+    segs[i].classList.remove('completed', 'active');
+    if(i < posInCycle) segs[i].classList.add('completed');
+    if(i === posInCycle && isWorking) segs[i].classList.add('active');
+  }
+  const longNow = isLongBreak();
+  longBreakNoteEl.hidden = !longNow;
+}
 
-function updateCycleVisualizer(){
-  cycleSegments.forEach((seg,i)=>{
-    seg.classList.remove('completed','active');
-    if(i < (cycleCount % 4) && isWorking) seg.classList.add('completed');
-    if(i === (cycleCount % 4) && isWorking) seg.classList.add('active');
-  });
-  if(isLongBreak()){
-    document.getElementById('cycle-bar').style.display = 'none';
-    longBreakText.style.display = 'block';
-  } else {
-    document.getElementById('cycle-bar').style.display = 'flex';
-    longBreakText.style.display = 'none';
+/* ---------------------------------------------------------------------
+   Phase engine — timestamp based so it stays accurate even if the tab
+   is throttled in the background, instead of drifting with setInterval.
+   --------------------------------------------------------------------- */
+function startPhaseTimer(){
+  if(tickHandle) return;
+  phaseStarted = true;
+  if(phaseEndAt == null) phaseEndAt = Date.now() + remaining * 1000;
+  tick();
+  tickHandle = setInterval(tick, 250);
+  updateStartBtnLabel();
+}
+function pausePhaseTimer(){
+  if(tickHandle){ clearInterval(tickHandle); tickHandle = null; }
+  if(phaseEndAt != null){
+    remaining = Math.max(0, Math.round((phaseEndAt - Date.now()) / 1000));
+    phaseEndAt = null;
+  }
+  updateTimerText();
+  updateStartBtnLabel();
+  updateTotalProgress(true);
+  saveStats();
+}
+function tick(){
+  if(phaseEndAt == null) return;
+  const newRemaining = Math.max(0, Math.ceil((phaseEndAt - Date.now()) / 1000));
+  if(newRemaining !== remaining){
+    const delta = remaining - newRemaining;
+    if(isWorking && delta > 0) totalStudied += delta / 60;
+    remaining = newRemaining;
+    updateTimerText();
+    updateSessionProgress();
+    updateTotalProgress();
+  }
+  if(remaining <= 0){
+    clearInterval(tickHandle); tickHandle = null; phaseEndAt = null;
+    handlePhaseComplete();
   }
 }
-
-function updateSessionProgress(){
-  const total = isWorking ? workDuration : (isLongBreak() ? longBreak : shortBreak);
-  const progress = ((total - remaining) / total) * 100;
-  timerProgress.style.width = `${Math.min(100, Math.max(0, progress))}%`;
+function handlePhaseComplete(){
+  phaseStarted = false;
+  if(isWorking){
+    cycleCount++;
+    isWorking = false;
+    if(isLongBreak()){
+      remaining = longBreakDur;
+      notify('Long break — nice work! Stretch and rest your eyes.', 'success');
+    } else {
+      remaining = shortBreakDur;
+      notify('Short break — relax for a bit.', 'success');
+    }
+    breakCount++;
+  } else {
+    isWorking = true;
+    remaining = workDuration;
+    notify('Focus session started.', 'info');
+  }
+  updateTimerText();
+  updateSessionProgress();
+  refreshCycleBar();
+  playBeep();
+  saveStats();
+  if(settings.autoStartNext) startPhaseTimer();
+  else updateStartBtnLabel();
 }
 
-/* total study progress (goal: 4 pomodoros = 100 minutes) */
-function updateTotalProgress(){
-  const maxGoal = 4 * WORK_MIN;
-  let percent = (totalStudied / maxGoal) * 100;
+startBtn.addEventListener('click', () => {
+  if(tickHandle) pausePhaseTimer();
+  else startPhaseTimer();
+});
+resetBtn.addEventListener('click', () => {
+  if(tickHandle){ clearInterval(tickHandle); tickHandle = null; }
+  phaseEndAt = null;
+  phaseStarted = false;
+  isWorking = true;
+  remaining = workDuration;
+  updateTimerText();
+  updateSessionProgress();
+  refreshCycleBar();
+  updateStartBtnLabel();
+});
+
+/* ---------------------------------------------------------------------
+   Daily progress + stats panel
+   --------------------------------------------------------------------- */
+function updateTotalProgress(force){
+  // totalStudied itself is kept accurate every tick (see tick()); this just
+  // throttles how often the card actually redraws, so it visibly ticks up
+  // once a minute instead of continuously.
+  const now = Date.now();
+  if(!force && now - lastTotalProgressRefresh < 60000) return;
+  lastTotalProgressRefresh = now;
+
+  const maxGoal = settings.cyclesBeforeLongBreak * settings.workMin;
+  let percent = maxGoal > 0 ? (totalStudied / maxGoal) * 100 : 0;
   if(percent > 100) percent = 100;
-  totalProgress.style.width = `${percent}%`;
-  totalTimeLabel.textContent = `${Math.floor(totalStudied)} minutes studied today`;
+  totalProgressEl.style.width = `${percent}%`;
+  const mins = Math.floor(totalStudied);
+  totalLabelEl.textContent = `${mins} minute${mins === 1 ? '' : 's'} focused today`;
 
   if(!studyGoalUnlocked && percent >= 100){
     studyGoalUnlocked = true;
-    notify('Daily study goal reached!', '#9c27b0');
-    // slide away study container and show stats
-    studyContainer.classList.add('hidden');
-    setTimeout(()=> {
-      statsPanel.classList.add('visible');
-      // fill stats
-      const breakTime = breakCount * SHORT_MIN;
-      statTotalStudy.textContent = `Total Study Time: ${Math.floor(totalStudied)} minutes`;
-      statBreaks.textContent = `Breaks Taken: ${breakCount}`;
-      statRatio.textContent = `Study:Break Ratio = ${Math.floor(totalStudied)} : ${breakTime}`;
-      statMusic.textContent = `Total Music Played: ${Math.floor(totalMusicSeconds/60)} minutes`;
-      statSongs.textContent = `Songs Completed: ${songsPlayed}`;
-    }, 680);
+    notify('Daily focus goal reached! 🎉', 'success');
+    studyContainerEl.classList.add('hidden');
+    setTimeout(revealStatsPanel, 650);
+    saveStats();
   }
 }
-
-function tickSecond(){ // called every second while timer running
-  if(isWorking) totalStudied += 1/60; // increment fractional minutes
+function revealStatsPanel(){
+  statsPanelEl.hidden = false;
+  requestAnimationFrame(() => statsPanelEl.classList.add('visible'));
+  fillStatsPanel();
 }
-
-/* Start / Reset */
-function startPomodoro(){
-  if(interval) return; // already running
-  interval = setInterval(()=>{
-    remaining--;
-    updateTimerText();
-    updateSessionProgress();
-    tickSecond();
-    updateTotalProgress();
-    updateCycleVisualizer();
-
-    /* milestone example: notify at 100 minutes */
-    if(Math.floor(totalStudied) === 100) notify('100 Minutes Studied — Amazing!', '#673AB7');
-
-    if(remaining <= 0){
-      clearInterval(interval);
-      interval = null;
-      if(isWorking){
-        cycleCount++;
-        // decide break length
-        if(cycleCount % 4 === 0){
-          remaining = longBreak;
-          notify('Long Break Started — enjoy 20 minutes!', '#ff5722');
-        } else {
-          remaining = shortBreak;
-          notify('Short Break Started — relax!', '#ff9800');
-        }
-        breakCount++;
-        isWorking = false;
-      } else {
-        remaining = workDuration;
-        isWorking = true;
-        notify('Work Session Started — focus!', '#4CAF50');
-      }
-      updateTimerText();
-      updateSessionProgress();
-      updateCycleVisualizer();
-      // auto-start next segment
-      startPomodoro();
-    }
-  }, 1000);
+function fillStatsPanel(){
+  const breakTime = breakCount * settings.shortBreakMin;
+  statTotalStudyEl.textContent = `Total focus time: ${Math.floor(totalStudied)} min`;
+  statBreaksEl.textContent = `Breaks taken: ${breakCount}`;
+  statRatioEl.textContent = `Focus : Break ratio — ${Math.floor(totalStudied)} : ${breakTime}`;
+  statMusicEl.textContent = `Music played: ${Math.floor(totalMusicSeconds / 60)} min`;
+  statSongsEl.textContent = `Songs completed: ${songsPlayed}`;
 }
-
-function resetPomodoro(){
-  if(interval){ clearInterval(interval); interval = null; }
-  remaining = workDuration;
-  isWorking = true;
-  updateTimerText();
-  updateSessionProgress();
-  updateCycleVisualizer();
+function resetTodayStats(){
+  if(!confirm("Reset today's progress? This can't be undone.")) return;
+  totalStudied = 0; breakCount = 0; cycleCount = 0; totalMusicSeconds = 0; songsPlayed = 0; studyGoalUnlocked = false;
+  statsPanelEl.classList.remove('visible');
+  statsPanelEl.hidden = true;
+  studyContainerEl.classList.remove('hidden');
+  updateTotalProgress(true);
+  refreshCycleBar();
+  saveStats();
+  notify("Today's progress reset.", 'info');
 }
+resetStatsBtn.addEventListener('click', resetTodayStats);
+resetStatsBtn2.addEventListener('click', resetTodayStats);
 
-/* ===========================
-   Music player: loading & controls
-   =========================== */
-
-/* Safe loader for local directory listing:
-   requires the page to be served by a local server that shows directory listing
-   (like your Koder Web File Management). */
-async function loadMP3s(){
+/* ---------------------------------------------------------------------
+   Sound alert (Web Audio API — no external asset needed)
+   --------------------------------------------------------------------- */
+let audioCtx = null;
+function playBeep(){
+  if(!settings.soundEnabled) return;
   try{
-    const r = await fetch(`./${MusicFolder}`);
-    const text = await r.text();
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(text, 'text/html');
-    const links = Array.from(doc.querySelectorAll('a'))
-                   .map(a=>a.getAttribute('href'))
-                   .filter(h=>h && h.toLowerCase().endsWith('.mp3'));
-    console.log('Directory fetch response', doc);
-    playlist = links.map(link => decodeURIComponent(link));
-    currentIndex = 0;
-    renderPlaylist();
-    if(playlist.length > 0){
-      // do not autoplay on mobile - only set src; playback requires user action
-      audio.src = decodeURIComponent(`/${MusicFolder}${playlist[currentIndex]}`);
-      updateTitle();
-      // display durations when metadata loads
-    } else {
-      notify('No MP3 files found in folder.', '#f44336');
-    }
-  }catch(err){
-    console.error('loadMP3s error', err);
-    console.log('Directory fetch response', r);
-    notify('Error loading MP3s (check local server).', '#f44336');
-  }
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.frequency.value = 880;
+    const now = audioCtx.currentTime;
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.18, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+    osc.start(now); osc.stop(now + 0.55);
+  }catch(e){ console.warn('Beep unavailable', e); }
 }
 
+/* ---------------------------------------------------------------------
+   Music player — files are loaded locally via the File API, nothing is
+   ever uploaded anywhere. Object URLs are revoked when a new folder is
+   chosen to avoid leaking memory.
+   --------------------------------------------------------------------- */
+function filterMp3(fileList){
+  return Array.from(fileList).filter(f => /\.mp3$/i.test(f.name));
+}
+function setPlaylist(files){
+  playlist.forEach(t => { try{ URL.revokeObjectURL(t.url); }catch(e){ /* ignore */ } });
+  files = files.slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric:true, sensitivity:'base' }));
+  playlist = files.map(f => ({ name: f.name.replace(/\.mp3$/i, ''), url: URL.createObjectURL(f) }));
+  currentIndex = 0;
+  renderPlaylist();
+  updateMusicControlsEnabled();
+  if(playlist.length){
+    audio.src = playlist[0].url;
+    trackNameEl.textContent = playlist[0].name;
+    notify(`Loaded ${playlist.length} track${playlist.length === 1 ? '' : 's'}.`, 'success');
+  } else {
+    audio.removeAttribute('src');
+    trackNameEl.textContent = 'No music folder selected';
+    notify('No .mp3 files found in that selection.', 'warn');
+  }
+  updateDocTitle();
+}
 function renderPlaylist(){
   playlistEl.innerHTML = '';
-  playlist.forEach((p, i) => {
+  playlist.forEach((t, i) => {
     const li = document.createElement('li');
-    let songTitle = (p.split('/').pop()).replace(/%20/g, ' '); // decode spaces
-    li.textContent = songTitle;
-    li.onclick = ()=> {
-      playSong(i);
-    };
+    li.textContent = t.name;
+    li.tabIndex = 0;
+    li.setAttribute('role', 'option');
+    li.addEventListener('click', () => playSong(i));
+    li.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); playSong(i); } });
     if(i === currentIndex) li.classList.add('playing');
     playlistEl.appendChild(li);
   });
 }
-
 function highlightPlaying(){
-  Array.from(playlistEl.children).forEach((li, idx) => {
-    li.classList.toggle('playing', idx === currentIndex);
-  });
-  
+  Array.from(playlistEl.children).forEach((li, i) => li.classList.toggle('playing', i === currentIndex));
+}
+function updateMusicControlsEnabled(){
+  const has = playlist.length > 0;
+  [prevBtn, nextBtn, back10Btn, fwd10Btn].forEach(b => { b.disabled = !has; });
 }
 
-/* play a song by index */
-function playSong(index){
-  if(!playlist || playlist.length === 0) return;
-  currentIndex = ((index % playlist.length) + playlist.length) % playlist.length;
-  audio.src = decodeURIComponent(`/${MusicFolder}${playlist[currentIndex]}`);
-  // ensure metadata loads before play on some browsers
-  const playPromise = audio.play();
-  if(playPromise !== undefined){
-    playPromise.catch(e=>{
-      // on mobile autoplay restriction - will be resolved after user interacts
-      console.log('play promise rejected (likely mobile autoplay):', e);
-    });
-  }
-  notify(`Now Playing: ${(decodeURIComponent(`/${MusicFolder}${playlist[currentIndex]}`)||'').split('/').pop()}`, '#2196f3');
-  songsPlayed++;
+function playSong(i){
+  if(!playlist.length) return;
+  currentIndex = ((i % playlist.length) + playlist.length) % playlist.length;
+  audio.src = playlist[currentIndex].url;
+  trackNameEl.textContent = playlist[currentIndex].name;
+  const p = audio.play();
+  if(p && p.catch) p.catch(() => { /* needs a user gesture first — ignore */ });
   highlightPlaying();
+  updateDocTitle();
 }
-
-/* play/pause toggle */
-function togglePlay(){
-  if(!audio.src) {
-    // attempt to set src from playlist if available
-    if(playlist.length > 0){
-      audio.src = decodeURIComponent(`/${MusicFolder}${playlist[currentIndex]}`);
-    } else {
-      notify('No songs loaded', '#f44336');
-      return;
-    }
+function togglePlayPause(){
+  if(!audio.src){
+    if(playlist.length) playSong(currentIndex);
+    else notify('Choose a music folder first.', 'warn');
+    return;
   }
-  if(audio.paused) audio.play().catch(()=>{/* ignore */});
+  if(audio.paused) audio.play().catch(() => {});
   else audio.pause();
 }
-
-/* next / prev / skip */
+function randomIndexExcluding(idx){
+  if(playlist.length <= 1) return 0;
+  let r;
+  do{ r = Math.floor(Math.random() * playlist.length); } while(r === idx);
+  return r;
+}
 function nextSong(){
   if(!playlist.length) return;
-  if(shuffleChk.checked){
-    currentIndex = Math.floor(Math.random() * playlist.length);
-  } else {
-    currentIndex = (currentIndex + 1) % playlist.length;
-  }
+  currentIndex = shuffleChk.checked ? randomIndexExcluding(currentIndex) : (currentIndex + 1) % playlist.length;
   playSong(currentIndex);
 }
 function prevSong(){
@@ -452,171 +807,247 @@ function prevSong(){
   playSong(currentIndex);
 }
 function skipSeconds(sec){
-  if(audio.src && !isNaN(audio.duration)){
+  if(audio.src && isFinite(audio.duration)){
     audio.currentTime = Math.max(0, Math.min(audio.duration, audio.currentTime + sec));
   }
 }
-
-function updateVolume(value){
-  const volume = Math.max(0, Math.min(100, Number(value))) / 100;
-  audio.volume = volume;
-  volumeValue.textContent = `${Math.round(volume * 100)}%`
+function updateVolume(v){
+  const vol = Math.max(0, Math.min(100, Number(v))) / 100;
+  audio.volume = vol;
+  volumeValueEl.textContent = `${Math.round(vol * 100)}%`;
 }
 
-/* track music playtime */
-setInterval(()=>{
-  if(!audio.paused && !audio.ended) totalMusicSeconds++;
-}, 1000);
+playPauseBtn.addEventListener('click', togglePlayPause);
+prevBtn.addEventListener('click', prevSong);
+nextBtn.addEventListener('click', nextSong);
+back10Btn.addEventListener('click', () => skipSeconds(-10));
+fwd10Btn.addEventListener('click', () => skipSeconds(10));
+volumeSlider.addEventListener('input', e => { updateVolume(e.target.value); savePlayerPrefs(); });
+shuffleChk.addEventListener('change', savePlayerPrefs);
+repeatChk.addEventListener('change', savePlayerPrefs);
 
-/* event handlers for audio */
-audio.addEventListener('loadedmetadata', ()=>{
-  // some mobile browsers require user activation for duration; guard NaN
-  if(!isFinite(audio.duration) || isNaN(audio.duration)){
-    totalTimeEl.textContent = '0:00';
-  } else {
-    totalTimeEl.textContent = formatMMSS(Math.floor(audio.duration));
-  }
-  updateTitle();
+audio.addEventListener('play', () => {
+  playPauseBtn.textContent = '⏸';
+  playPauseBtn.setAttribute('aria-label', 'Pause');
+  vinylEl.classList.add('playing');
 });
-
-audio.addEventListener('timeupdate', ()=>{
-  const prog = (audio.currentTime / (audio.duration || 1)) * 100;
-  songProgress.style.width = `${Math.min(100, Math.max(0, prog))}%`;
-  currentTimeEl.textContent = formatMMSS(Math.floor(audio.currentTime));
-  if(isFinite(audio.duration) && !isNaN(audio.duration)) totalTimeEl.textContent = formatMMSS(Math.floor(audio.duration));
-  updateTitle();
+audio.addEventListener('pause', () => {
+  playPauseBtn.textContent = '▶';
+  playPauseBtn.setAttribute('aria-label', 'Play');
+  vinylEl.classList.remove('playing');
 });
-
-audio.addEventListener('ended', ()=>{
+audio.addEventListener('loadedmetadata', () => {
+  const dur = isFinite(audio.duration) ? audio.duration : 0;
+  totalTimeEl.textContent = formatMMSS(dur);
+  songProgressTrack.setAttribute('aria-valuemax', Math.floor(dur));
+  updateDocTitle();
+});
+audio.addEventListener('timeupdate', () => {
+  const dur = audio.duration || 0;
+  const pct = dur ? (audio.currentTime / dur) * 100 : 0;
+  songProgressEl.style.width = `${Math.min(100, Math.max(0, pct))}%`;
+  curTimeEl.textContent = formatMMSS(audio.currentTime);
+  songProgressTrack.setAttribute('aria-valuenow', Math.floor(audio.currentTime));
+  updateDocTitle();
+});
+audio.addEventListener('ended', () => {
+  songsPlayed++;
+  saveStats();
   if(repeatChk.checked) playSong(currentIndex);
   else nextSong();
 });
+audio.addEventListener('error', () => {
+  if(!audio.src) return;
+  const name = playlist[currentIndex] ? playlist[currentIndex].name : 'track';
+  notify(`Couldn't play "${name}" — skipping.`, 'error');
+  if(playlist.length > 1) nextSong();
+});
+setInterval(() => { if(!audio.paused && !audio.ended && audio.src) totalMusicSeconds++; }, 1000);
 
-/* allow clicking song-progress to seek */
-songProgressContainer.addEventListener('click', (e)=>{
+songProgressTrack.addEventListener('click', e => {
   if(!audio.src || !isFinite(audio.duration)) return;
-  const rect = songProgressContainer.getBoundingClientRect();
+  const rect = songProgressTrack.getBoundingClientRect();
   const pct = (e.clientX - rect.left) / rect.width;
   audio.currentTime = Math.max(0, Math.min(audio.duration, pct * audio.duration));
 });
-
-volumeSlider.addEventListener('input', (e)=>{
-  updateVolume(e.target.value);
+songProgressTrack.addEventListener('keydown', e => {
+  if(!audio.src || !isFinite(audio.duration)) return;
+  if(e.key === 'ArrowRight'){ e.preventDefault(); skipSeconds(5); }
+  if(e.key === 'ArrowLeft'){ e.preventDefault(); skipSeconds(-5); }
 });
 
-updateVolume(volumeSlider.value);
-
-/* ===========================
-   Title updater (live)
-   =========================== */
-function updateTitle(){
-  // timer text
-  const timerDisplay = timerEl.textContent || formatMMSS(remaining);
-  const stage = isWorking ? `${(cycleCount % 4) + 1}/4` : (isLongBreak() ? 'Long Break' : 'Break');
-  // song name
-  const songName = (playlist[currentIndex] ? playlist[currentIndex].split('/').pop() : 'No Song');
-  const curT = formatMMSS(Math.floor(audio.currentTime || 0));
-  const totT = (isFinite(audio.duration) && !isNaN(audio.duration)) ? formatMMSS(Math.floor(audio.duration)) : '0:00';
-  document.title = `${timerDisplay} (${stage}) | ${songName} (${curT} / ${totT})`;
-}
-
-/* ===========================
-   iOS / Mobile unlock logic
-   =========================== */
-/* Many mobile browsers (iOS Safari) block audio playback and metadata until a user gesture.
-   We'll wait for the first tap anywhere on the document to 'unlock' audio and then load MP3s.
-*/
-function unlockAudioAndLoad(){
-  if(audioUnlocked) return;
-  audioUnlocked = true;
-  // create a silent short audio play attempt if needed (not necessary here but kept safe)
-  audio.muted = true;
-  const p = audio.play();
-  if(p && p.catch){
-    p.catch(()=>{}).finally(()=>{
-      audio.pause();
-      audio.muted = false;
-      // Now load playlist
-      loadMP3s();
-    });
-  } else {
-    audio.pause();
-    audio.muted = false;
-    loadMP3s();
-  }
-  // remove the listener
-  document.body.removeEventListener('click', unlockAudioAndLoad);
-}
-
-// ensure first tap initiates
-document.body.addEventListener('click', unlockAudioAndLoad, {once:true});
-
-/* ===========================
-   UI wiring: buttons
-   =========================== */
-startBtn.addEventListener('click', ()=>{ startPomodoro(); startBtn.blur(); });
-resetBtn.addEventListener('click', ()=>{ resetPomodoro(); resetBtn.blur(); });
-
-playBtn.addEventListener('click', ()=>{ togglePlay(); });
-prevBtn.addEventListener('click', ()=>{ prevSong(); });
-nextBtn.addEventListener('click', ()=>{ nextSong(); });
-back10.addEventListener('click', ()=>{ skipSeconds(-10); });
-fwd10.addEventListener('click', ()=>{ skipSeconds(10); });
-
-/* keyboard support for desktop */
-document.addEventListener('keydown', (e)=> {
-  if(e.code === 'Space'){ e.preventDefault(); togglePlay(); }
-  if(e.code === 'ArrowRight'){ skipSeconds(10); }
-  if(e.code === 'ArrowLeft'){ skipSeconds(-10); }
+/* ---- Choosing a folder via the file picker ---- */
+chooseFolderBtn.addEventListener('click', () => folderInput.click());
+folderInput.addEventListener('change', e => {
+  setPlaylist(filterMp3(e.target.files));
+  folderInput.value = ''; // allow re-selecting the same folder later
 });
 
-/* ===========================
-   Playlist rendering helper
-   =========================== */
-function renderPlaylist(){
-  playlistEl.innerHTML = '';
-  playlist.forEach((p, i) => {
-    const li = document.createElement('li');
-    const name = p.split('/').pop();
-    li.textContent = name;
-    li.onclick = ()=> playSong(i);
-    if(i === currentIndex) li.classList.add('playing');
-    playlistEl.appendChild(li);
+/* ---- Drag & drop a folder (or files) onto the music card ---- */
+function walkEntry(entry, out){
+  return new Promise(resolve => {
+    if(entry.isFile){
+      entry.file(f => { out.push(f); resolve(); }, () => resolve());
+    } else if(entry.isDirectory){
+      const reader = entry.createReader();
+      const readBatch = () => {
+        reader.readEntries(async entries => {
+          if(!entries.length){ resolve(); return; }
+          for(const e of entries) await walkEntry(e, out);
+          readBatch(); // directory entries can arrive in multiple batches
+        }, () => resolve());
+      };
+      readBatch();
+    } else resolve();
   });
-  highlightPlaying();
+}
+async function getFilesFromDrop(dataTransfer){
+  const out = [];
+  const items = dataTransfer.items ? Array.from(dataTransfer.items) : [];
+  if(items.length && items[0].webkitGetAsEntry){
+    const entries = items.map(it => it.webkitGetAsEntry()).filter(Boolean);
+    for(const entry of entries) await walkEntry(entry, out);
+  } else {
+    out.push(...Array.from(dataTransfer.files || []));
+  }
+  return out;
+}
+['dragenter', 'dragover'].forEach(evt => dropZone.addEventListener(evt, e => {
+  e.preventDefault();
+  dropZone.classList.add('drag-over');
+}));
+['dragleave', 'drop'].forEach(evt => dropZone.addEventListener(evt, e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+}));
+dropZone.addEventListener('drop', async e => {
+  const files = await getFilesFromDrop(e.dataTransfer);
+  setPlaylist(filterMp3(files));
+});
+
+/* ---------------------------------------------------------------------
+   Live document title
+   --------------------------------------------------------------------- */
+function updateDocTitle(){
+  const stage = isWorking
+    ? `Focus ${(cycleCount % settings.cyclesBeforeLongBreak) + 1}/${settings.cyclesBeforeLongBreak}`
+    : (isLongBreak() ? 'Long break' : 'Short break');
+  const track = playlist[currentIndex] ? playlist[currentIndex].name : 'No track';
+  document.title = `${formatMMSS(remaining)} · ${stage} — ${track}`;
 }
 
-/* ===========================
-   Initial load: do not auto-load audio on first paint
-   We'll rely on user tap to trigger unlockAudioAndLoad(), which calls loadMP3s()
-   But for desktop where autoplay and metadata allowed, we also trigger load after short delay
-*/
-(async function initialAttempt(){
-  // If page is on desktop or server and not blocked, attempt load after a tiny delay
-  setTimeout(()=>{
-    // try to load if not on iOS Safari (quick UA heuristic)
-    const ua = navigator.userAgent || '';
-    const isiOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
-    if(!isiOS){
-      loadMP3s();
-    } else {
-      // wait for user tap - notify user
-      notify('Tap anywhere to unlock audio on mobile', '#1976D2');
-    }
-  }, 350);
-})();
-
-/* expose loadMP3s in case we need manual trigger */
-window.loadMP3s = loadMP3s;
-
-/* ===========================
-   Graceful safety: attempt to keep UI live if something errors
-   =========================== */
-window.addEventListener('error', (ev)=>{
-  console.error('Unhandled error', ev);
-  // don't crash UI - notify user
-  notify('An unexpected error occurred. Check console for details.', '#f44336');
+/* ---------------------------------------------------------------------
+   Settings dialog
+   --------------------------------------------------------------------- */
+function populateSettingsForm(){
+  workMinInput.value = settings.workMin;
+  shortBreakInput.value = settings.shortBreakMin;
+  longBreakInput.value = settings.longBreakMin;
+  cyclesInput.value = settings.cyclesBeforeLongBreak;
+  autoStartInput.checked = settings.autoStartNext;
+  soundInput.checked = settings.soundEnabled;
+}
+function openSettingsDialog(){
+  populateSettingsForm();
+  if(typeof settingsDialog.showModal === 'function') settingsDialog.showModal();
+  else settingsDialog.setAttribute('open', '');
+}
+function closeSettingsDialog(){
+  if(typeof settingsDialog.close === 'function' && settingsDialog.open) settingsDialog.close();
+  else settingsDialog.removeAttribute('open');
+}
+settingsBtn.addEventListener('click', openSettingsDialog);
+closeSettingsBtn.addEventListener('click', closeSettingsDialog);
+settingsDialog.addEventListener('click', e => {
+  const r = settingsDialog.getBoundingClientRect();
+  const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+  if(!inside) closeSettingsDialog();
 });
+restoreDefaultsBtn.addEventListener('click', () => {
+  workMinInput.value = DEFAULTS.workMin;
+  shortBreakInput.value = DEFAULTS.shortBreakMin;
+  longBreakInput.value = DEFAULTS.longBreakMin;
+  cyclesInput.value = DEFAULTS.cyclesBeforeLongBreak;
+  autoStartInput.checked = DEFAULTS.autoStartNext;
+  soundInput.checked = DEFAULTS.soundEnabled;
+});
+settingsForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+  settings.workMin = clamp(parseInt(workMinInput.value, 10) || DEFAULTS.workMin, 1, 180);
+  settings.shortBreakMin = clamp(parseInt(shortBreakInput.value, 10) || DEFAULTS.shortBreakMin, 1, 60);
+  settings.longBreakMin = clamp(parseInt(longBreakInput.value, 10) || DEFAULTS.longBreakMin, 1, 120);
+  settings.cyclesBeforeLongBreak = clamp(parseInt(cyclesInput.value, 10) || DEFAULTS.cyclesBeforeLongBreak, 2, 12);
+  settings.autoStartNext = autoStartInput.checked;
+  settings.soundEnabled = soundInput.checked;
+  saveSettings();
+  applySettingsToDurations();
+  if(!phaseStarted) remaining = currentPhaseTotal();
+  renderCycleBar();
+  updateTimerText();
+  updateSessionProgress();
+  updateTotalProgress(true);
+  updateStartBtnLabel();
+  notify('Settings saved.', 'success');
+  closeSettingsDialog();
+});
+
+/* ---------------------------------------------------------------------
+   Keyboard shortcuts (ignored while typing in a field or a dialog is open)
+   --------------------------------------------------------------------- */
+document.addEventListener('keydown', e => {
+  const tag = (e.target.tagName || '').toLowerCase();
+  if(tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
+  if(settingsDialog.open) return;
+  if(e.code === 'Space'){ e.preventDefault(); togglePlayPause(); }
+  else if(e.code === 'ArrowRight'){ skipSeconds(10); }
+  else if(e.code === 'ArrowLeft'){ skipSeconds(-10); }
+});
+
+/* ---------------------------------------------------------------------
+   Safety net
+   --------------------------------------------------------------------- */
+window.addEventListener('error', ev => {
+  console.error('Unhandled error:', ev.error || ev.message);
+  notify('Something went wrong — check the console for details.', 'error');
+});
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'hidden') saveStats(); });
+window.addEventListener('pagehide', saveStats);
+
+/* ---------------------------------------------------------------------
+   Init
+   --------------------------------------------------------------------- */
+(function init(){
+  const restored = loadStats();
+  if(restored){
+    totalStudied = restored.totalStudied || 0;
+    breakCount = restored.breakCount || 0;
+    cycleCount = restored.cycleCount || 0;
+    totalMusicSeconds = restored.totalMusicSeconds || 0;
+    songsPlayed = restored.songsPlayed || 0;
+    studyGoalUnlocked = !!restored.studyGoalUnlocked;
+  }
+  remaining = workDuration;
+  isWorking = true;
+
+  renderCycleBar();
+  updateTimerText();
+  updateSessionProgress();
+  updateTotalProgress(true);
+  updateStartBtnLabel();
+  updateMusicControlsEnabled();
+
+  if(studyGoalUnlocked){
+    studyContainerEl.classList.add('hidden');
+    revealStatsPanel();
+  }
+
+  const prefs = loadPlayerPrefs();
+  volumeSlider.value = prefs.volume;
+  shuffleChk.checked = prefs.shuffle;
+  repeatChk.checked = prefs.repeat;
+  updateVolume(prefs.volume);
+})();
 </script>
 </body>
 </html>
