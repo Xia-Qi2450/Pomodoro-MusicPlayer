@@ -58,6 +58,37 @@ Dude, its a normal `HTML` file, there will definitely be no data collection of a
 
 ---
 
+## For Schools
+
+Deep Focus is a free, open-source web application designed to help students stay focused while studying.
+
+### Features
+
+- Pomodoro timer
+- Optional ambient background music
+- Simple and distraction-free interface
+- Runs entirely in the browser
+
+### Privacy
+
+Deep Focus does **not** collect, store, or transmit any personal data. Everything runs locally in the user's browser.
+
+### Accessibility
+
+- No installation required
+- Works on modern desktop and mobile browsers
+- Can be used offline after the page has been loaded (if applicable)
+
+### Cost
+
+Deep Focus is completely free to use and open source.
+
+### Source Code
+
+If your school would like to review or contribute to the project, the full source code is available on GitHub.
+
+---
+
 ## License
 
 MIT because open-source and free to use is the best way forward.
